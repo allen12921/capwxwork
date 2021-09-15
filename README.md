@@ -25,7 +25,15 @@ require 'capwxwork', require: false
 Setup in `config/deploy.rb`. Example:
 
 ```ruby
-
+set :wxwork_config, {
+  web_hook: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=1de12120539-21-4721242-2121-1212'
+}
+before 'deploy:check', 'wxwork:notify:starting_to_deploy' do
+  Rake::Task['wxwork:notify'].invoke('Starting to deploy.')
+end
+after 'deploy:finishing', 'wxwork:notify:deployment_finished' do
+  Rake::Task['wxwork:notify'].invoke('Deployment finished.')
+end
 ```
 ## License
 
