@@ -7,16 +7,46 @@ namespace :wxwork do
     stage = fetch(:stage)
     branch = fetch(:branch)
     app_name = fetch(:application)
+    deployer = fetch(:local_user)
     wxwork_config = fetch(:wxwork_config)
     time = Time.now.to_s
+    $global_stime = Time.now unless defined? $global_stime
+    duration = Time.at(Time.now - $global_stime).utc.strftime("%H:%M:%S")
     uri = URI(wxwork_config[:web_hook])
-    content = <<-MARKDOWN
+    current_version = fetch(:current_revision,'default')
+    repo_url = fetch(:repo_url)
+    base_url = 'https://'+repo_url[4..-5].gsub(':','/')
+        
+    unless defined? $global_old_version
+     on primary(:app) do
+         within current_path do
+           $global_old_version = capture :cat, 'REVISION'
+         end
+     end
+    end
+
+    content_start = <<-MARKDOWN
     <font color="comment">#{message}</font>
     >App Name: <font color="info">#{app_name}</font>
     >Environment: <font color="info">#{stage}</font>
     >Branch: <font color="info">#{branch}</font>
+    >Deployer: <font color="info">#{deployer}</font>
     >Time At: <font color="info">#{time}</font>
     MARKDOWN
+
+    content_end = <<-MARKDOWN
+    <font color="comment">#{message}</font>
+    >App Name: <font color="info">#{app_name}</font>
+    >Environment: <font color="info">#{stage}</font>
+    >Branch: <font color="info">#{branch}</font>
+    >Deployer: <font color="info">#{deployer}</font>
+    >Diff: <font color="info">[#{base_url}/compare/#{$global_old_version}...#{current_version}](#{base_url}/compare/#{$global_old_version}...#{current_version})</font>
+    >Duration: <font color="info">#{duration}</font>
+    >Time At: <font color="info">#{time}</font>
+    MARKDOWN
+
+    content = message.include?('finished') ? content_end : content_start
+
     payload = {
       'msgtype' => 'markdown',
       'markdown' =>
